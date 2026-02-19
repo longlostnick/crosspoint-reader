@@ -57,8 +57,8 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Run home selector memory tests
-        run: bash test/run_home_selector_memory_tests.sh
+      - name: Run host tests
+        run: bash test/run_host_tests.sh
 
   build:
     runs-on: ubuntu-latest
