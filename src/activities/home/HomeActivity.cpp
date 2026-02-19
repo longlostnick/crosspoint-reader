@@ -23,7 +23,7 @@
 
 namespace {
 HomeSelectorMemory homeSelectorMemory;
-}  // namespace
+}
 
 int HomeActivity::getMenuItemCount() const {
   int count = 4;  // My Library, Recents, File transfer, Settings
