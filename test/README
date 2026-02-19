@@ -9,3 +9,7 @@ in the development cycle.
 
 More information about PlatformIO Unit Testing:
 - https://docs.platformio.org/en/latest/advanced/unit-testing/index.html
+
+Host-side tests in this repository:
+- `./test/run_hyphenation_eval.sh` - evaluates hyphenation quality datasets
+- `./test/run_home_selector_memory_tests.sh` - verifies home screen cursor restore/clamp behavior

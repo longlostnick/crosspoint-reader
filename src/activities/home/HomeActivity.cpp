@@ -8,7 +8,6 @@
 #include <Utf8.h>
 #include <Xtc.h>
 
-#include <algorithm>
 #include <cstring>
 #include <vector>
 
@@ -17,13 +16,13 @@
 #include "CrossPointState.h"
 #include "MappedInputManager.h"
 #include "RecentBooksStore.h"
+#include "activities/home/HomeSelectorMemory.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
 #include "util/StringUtils.h"
 
 namespace {
-// Remember the last selected item on the home screen while the app is running.
-int lastHomeSelectorIndex = 0;
+HomeSelectorMemory homeSelectorMemory;
 }  // namespace
 
 int HomeActivity::getMenuItemCount() const {
@@ -123,16 +122,14 @@ void HomeActivity::onEnter() {
 
   auto metrics = UITheme::getInstance().getMetrics();
   loadRecentBooks(metrics.homeRecentBooksCount);
-  const int maxSelectorIndex = getMenuItemCount() - 1;
-  selectorIndex = std::clamp(lastHomeSelectorIndex, 0, maxSelectorIndex);
+  selectorIndex = homeSelectorMemory.restore(getMenuItemCount());
 
   // Trigger first update
   requestUpdate();
 }
 
 void HomeActivity::onExit() {
-  const int maxSelectorIndex = getMenuItemCount() - 1;
-  lastHomeSelectorIndex = std::clamp(selectorIndex, 0, maxSelectorIndex);
+  homeSelectorMemory.store(selectorIndex, getMenuItemCount());
 
   Activity::onExit();
 
