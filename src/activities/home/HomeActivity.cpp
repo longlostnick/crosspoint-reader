@@ -16,9 +16,14 @@
 #include "CrossPointState.h"
 #include "MappedInputManager.h"
 #include "RecentBooksStore.h"
+#include "activities/home/HomeSelectorMemory.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
 #include "util/StringUtils.h"
+
+namespace {
+HomeSelectorMemory homeSelectorMemory;
+}
 
 int HomeActivity::getMenuItemCount() const {
   int count = 4;  // My Library, Recents, File transfer, Settings
@@ -29,6 +34,20 @@ int HomeActivity::getMenuItemCount() const {
     count++;
   }
   return count;
+}
+
+void HomeActivity::applyPendingSelectorRestore() {
+  if (!pendingSelectorRestore) {
+    return;
+  }
+
+  selectorIndex = homeSelectorMemory.restore(getMenuItemCount());
+
+  // Keep retrying the restore while recents may still be changing.
+  const int storedIndex = homeSelectorMemory.getStoredIndex();
+  if (storedIndex < getMenuItemCount() || recentsLoaded) {
+    pendingSelectorRestore = false;
+  }
 }
 
 void HomeActivity::loadRecentBooks(int maxBooks) {
@@ -70,7 +89,7 @@ void HomeActivity::loadRecentCovers(int coverHeight) {
           // Try to generate thumbnail image for Continue Reading card
           if (!showingLoading) {
             showingLoading = true;
-            popupRect = GUI.drawPopup(renderer, tr(STR_LOADING));
+            popupRect = GUI.drawPopup(renderer, tr(STR_LOADING_POPUP));
           }
           GUI.fillPopupProgress(renderer, popupRect, 10 + progress * (90 / recentBooks.size()));
           bool success = epub.generateThumbBmp(coverHeight);
@@ -88,7 +107,7 @@ void HomeActivity::loadRecentCovers(int coverHeight) {
             // Try to generate thumbnail image for Continue Reading card
             if (!showingLoading) {
               showingLoading = true;
-              popupRect = GUI.drawPopup(renderer, tr(STR_LOADING));
+              popupRect = GUI.drawPopup(renderer, tr(STR_LOADING_POPUP));
             }
             GUI.fillPopupProgress(renderer, popupRect, 10 + progress * (90 / recentBooks.size()));
             bool success = xtc.generateThumbBmp(coverHeight);
@@ -115,16 +134,19 @@ void HomeActivity::onEnter() {
   // Check if OPDS browser URL is configured
   hasOpdsUrl = strlen(SETTINGS.opdsServerUrl) > 0;
 
-  selectorIndex = 0;
-
   auto metrics = UITheme::getInstance().getMetrics();
   loadRecentBooks(metrics.homeRecentBooksCount);
+  selectorIndex = homeSelectorMemory.restore(getMenuItemCount());
+  pendingSelectorRestore = true;
 
   // Trigger first update
   requestUpdate();
 }
 
 void HomeActivity::onExit() {
+  pendingSelectorRestore = false;
+  homeSelectorMemory.store(selectorIndex, getMenuItemCount());
+
   Activity::onExit();
 
   // Free the stored cover buffer if any
@@ -174,14 +196,18 @@ void HomeActivity::freeCoverBuffer() {
 }
 
 void HomeActivity::loop() {
+  applyPendingSelectorRestore();
+
   const int menuCount = getMenuItemCount();
 
   buttonNavigator.onNext([this, menuCount] {
+    pendingSelectorRestore = false;
     selectorIndex = ButtonNavigator::nextIndex(selectorIndex, menuCount);
     requestUpdate();
   });
 
   buttonNavigator.onPrevious([this, menuCount] {
+    pendingSelectorRestore = false;
     selectorIndex = ButtonNavigator::previousIndex(selectorIndex, menuCount);
     requestUpdate();
   });
@@ -213,6 +239,8 @@ void HomeActivity::loop() {
 }
 
 void HomeActivity::render(Activity::RenderLock&&) {
+  applyPendingSelectorRestore();
+
   auto metrics = UITheme::getInstance().getMetrics();
   const auto pageWidth = renderer.getScreenWidth();
   const auto pageHeight = renderer.getScreenHeight();
@@ -229,9 +257,12 @@ void HomeActivity::render(Activity::RenderLock&&) {
   // Build menu items dynamically
   std::vector<const char*> menuItems = {tr(STR_BROWSE_FILES), tr(STR_MENU_RECENT_BOOKS), tr(STR_FILE_TRANSFER),
                                         tr(STR_SETTINGS_TITLE)};
+  std::vector<UIIcon> menuIcons = {Folder, Recent, Transfer, Settings};
+
   if (hasOpdsUrl) {
     // Insert OPDS Browser after My Library
     menuItems.insert(menuItems.begin() + 2, tr(STR_OPDS_BROWSER));
+    menuIcons.insert(menuIcons.begin() + 2, Library);
   }
 
   GUI.drawButtonMenu(
@@ -240,7 +271,8 @@ void HomeActivity::render(Activity::RenderLock&&) {
            pageHeight - (metrics.headerHeight + metrics.homeTopPadding + metrics.verticalSpacing * 2 +
                          metrics.buttonHintsHeight)},
       static_cast<int>(menuItems.size()), selectorIndex - recentBooks.size(),
-      [&menuItems](int index) { return std::string(menuItems[index]); }, nullptr);
+      [&menuItems](int index) { return std::string(menuItems[index]); },
+      [&menuIcons](int index) { return menuIcons[index]; });
 
   const auto labels = mappedInput.mapLabels("", tr(STR_SELECT), tr(STR_DIR_UP), tr(STR_DIR_DOWN));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
