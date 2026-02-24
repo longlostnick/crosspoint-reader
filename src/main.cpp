@@ -23,6 +23,7 @@
 #include "activities/browser/OpdsBookBrowserActivity.h"
 #include "activities/home/HomeActivity.h"
 #include "activities/weather/WeatherActivity.h"
+#include "network/SdCardOta.h"
 #include "activities/home/MyLibraryActivity.h"
 #include "activities/home/RecentBooksActivity.h"
 #include "activities/network/CrossPointWebServerActivity.h"
@@ -317,6 +318,23 @@ void setup() {
   KOREADER_STORE.loadFromFile();
   UITheme::getInstance().reload();
   ButtonNavigator::setMappedInputManager(mappedInputManager);
+
+  // Check for firmware update on SD card
+  if (SdCardOta::hasUpdate()) {
+    LOG_INF("MAIN", "Found firmware.bin on SD card, installing update...");
+    setupDisplayAndFonts();
+    renderer.clearScreen();
+    renderer.setFont(UI_12_FONT_ID);
+    renderer.drawTextCenteredX(renderer.getScreenWidth() / 2, renderer.getScreenHeight() / 2 - 20, "Updating firmware...");
+    renderer.drawTextCenteredX(renderer.getScreenWidth() / 2, renderer.getScreenHeight() / 2 + 10, "Do not power off");
+    renderer.displayBuffer();
+    SdCardOta::installUpdate();
+    // If we get here, update failed
+    renderer.clearScreen();
+    renderer.drawTextCenteredX(renderer.getScreenWidth() / 2, renderer.getScreenHeight() / 2, "Update failed!");
+    renderer.displayBuffer();
+    delay(3000);
+  }
 
   switch (gpio.getWakeupReason()) {
     case HalGPIO::WakeupReason::PowerButton:
