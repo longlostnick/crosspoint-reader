@@ -175,6 +175,11 @@ class CrossPointSettings {
   // Use book's embedded CSS styles for EPUB rendering (1 = enabled, 0 = disabled)
   uint8_t embeddedStyle = 1;
 
+  // Custom OTA update URL (GitHub releases API format)
+  // If set, overrides the default update URL for checking firmware updates
+  // Example: https://api.github.com/repos/username/repo/releases/latest
+  char customOtaUrl[128] = "";
+
   ~CrossPointSettings() = default;
 
   // Get singleton instance
