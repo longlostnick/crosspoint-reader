@@ -28,7 +28,8 @@ class WeatherActivity final : public ActivityWithSubactivity {
   
   bool wifiConnected = false;
   bool weatherFetched = false;
-  bool wantLocationSearch = false;  // True if user wants to change/set location
+  bool wantLocationSearch = false;  // True if user wants to search for location
+  bool wantAutoDetect = false;      // True if user wants IP-based auto-detect
   
   int menuIndex = 0;
   
@@ -45,6 +46,7 @@ class WeatherActivity final : public ActivityWithSubactivity {
   void renderError();
   
   void startLocationSearch();
+  void autoDetectLocation();
   void onLocationSelected(const std::string& name, float latitude, float longitude);
   
   std::string formatTemperature(float celsius) const;

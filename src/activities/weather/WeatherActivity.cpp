@@ -13,6 +13,7 @@
 #include "MappedInputManager.h"
 #include "activities/network/WifiSelectionActivity.h"
 #include "components/UITheme.h"
+#include "weather/IpGeolocation.h"
 #include "weather/OpenMeteoProvider.h"
 
 void WeatherActivity::onEnter() {
@@ -22,6 +23,7 @@ void WeatherActivity::onEnter() {
   wifiConnected = false;
   weatherFetched = false;
   wantLocationSearch = false;
+  wantAutoDetect = false;
   weatherData.valid = false;
   errorMessage.clear();
   menuIndex = 0;
@@ -68,7 +70,10 @@ void WeatherActivity::onWifiComplete(bool connected) {
     bool hasLocation = strlen(SETTINGS.weatherLocationName) > 0 &&
                        (SETTINGS.weatherLatitude != 0.0f || SETTINGS.weatherLongitude != 0.0f);
     
-    if (wantLocationSearch || !hasLocation) {
+    if (wantAutoDetect) {
+      wantAutoDetect = false;
+      autoDetectLocation();
+    } else if (wantLocationSearch || !hasLocation) {
       wantLocationSearch = false;
       startLocationSearch();
     } else {
@@ -99,6 +104,22 @@ void WeatherActivity::startLocationSearch() {
         menuIndex = 0;
         requestUpdate();
       }));
+}
+
+void WeatherActivity::autoDetectLocation() {
+  state = WeatherActivityState::FETCHING_WEATHER;
+  requestUpdateAndWait();
+  
+  LOG_INF("WEATHER", "Auto-detecting location from IP...");
+  
+  IpLocationResult ipLocation = IpGeolocation::getLocation();
+  
+  if (ipLocation.valid) {
+    onLocationSelected(ipLocation.getDisplayName(), ipLocation.latitude, ipLocation.longitude);
+  } else {
+    LOG_WRN("WEATHER", "Auto-detect failed, falling back to search");
+    startLocationSearch();
+  }
 }
 
 void WeatherActivity::onLocationSelected(const std::string& name, float latitude, float longitude) {
@@ -170,7 +191,7 @@ void WeatherActivity::loop() {
       bool hasLocation = strlen(SETTINGS.weatherLocationName) > 0 &&
                          (SETTINGS.weatherLatitude != 0.0f || SETTINGS.weatherLongitude != 0.0f);
       
-      int numOptions = hasLocation ? 2 : 1;
+      int numOptions = hasLocation ? 2 : 2;  // With location: Refresh, Change | Without: Auto-detect, Search
       
       buttonNavigator.onNext([this, numOptions] {
         menuIndex = (menuIndex + 1) % numOptions;
@@ -186,16 +207,26 @@ void WeatherActivity::loop() {
           if (menuIndex == 0) {
             // Refresh weather
             wantLocationSearch = false;
+            wantAutoDetect = false;
             startWifiConnection();
           } else {
             // Change location
             wantLocationSearch = true;
+            wantAutoDetect = false;
             startWifiConnection();
           }
         } else {
-          // No location - search for one
-          wantLocationSearch = true;
-          startWifiConnection();
+          if (menuIndex == 0) {
+            // Auto-detect location from IP
+            wantAutoDetect = true;
+            wantLocationSearch = false;
+            startWifiConnection();
+          } else {
+            // Search for location
+            wantLocationSearch = true;
+            wantAutoDetect = false;
+            startWifiConnection();
+          }
         }
       }
       if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
@@ -314,7 +345,7 @@ void WeatherActivity::renderNeedsWifi() {
   if (hasLocation) {
     menuItems = {tr(STR_WEATHER_REFRESH), tr(STR_WEATHER_CHANGE_LOCATION)};
   } else {
-    menuItems = {tr(STR_WEATHER_SEARCH_LOCATION)};
+    menuItems = {tr(STR_WEATHER_AUTO_DETECT), tr(STR_WEATHER_SEARCH_LOCATION)};
   }
   
   GUI.drawButtonMenu(renderer, Rect{0, contentY, pageWidth, contentHeight},
