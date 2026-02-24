@@ -181,6 +181,11 @@ class CrossPointSettings {
   float weatherLongitude = 0.0f;      // Location longitude for weather
   uint8_t useFahrenheit = 0;          // 0 = Celsius, 1 = Fahrenheit
 
+  // Custom OTA update URL (GitHub releases API format)
+  // If set, overrides the default update URL for checking firmware updates
+  // Example: https://api.github.com/repos/username/repo/releases/latest
+  char customOtaUrl[128] = "";
+
   ~CrossPointSettings() = default;
 
   // Get singleton instance

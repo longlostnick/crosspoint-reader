@@ -381,6 +381,7 @@ enum class StrId : uint16_t {
   STR_WEATHER_CHANGE_LOCATION,
   STR_WEATHER_AUTO_DETECT,
   STR_WEATHER_DETECTING,
+  STR_CUSTOM_OTA_URL,
   // Sentinel - must be last
   _COUNT
 };
