@@ -9,9 +9,9 @@
 #include <cstring>
 
 #include "CrossPointSettings.h"
+#include "LocationSearchActivity.h"
 #include "MappedInputManager.h"
 #include "activities/network/WifiSelectionActivity.h"
-#include "activities/util/KeyboardEntryActivity.h"
 #include "components/UITheme.h"
 #include "weather/OpenMeteoProvider.h"
 
@@ -21,6 +21,7 @@ void WeatherActivity::onEnter() {
   state = WeatherActivityState::CHECKING_LOCATION;
   wifiConnected = false;
   weatherFetched = false;
+  wantLocationSearch = false;
   weatherData.valid = false;
   errorMessage.clear();
   menuIndex = 0;
@@ -46,13 +47,6 @@ void WeatherActivity::disconnectWifi() {
 }
 
 void WeatherActivity::checkLocationAndProceed() {
-  if (strlen(SETTINGS.weatherLocationName) == 0 ||
-      (SETTINGS.weatherLatitude == 0.0f && SETTINGS.weatherLongitude == 0.0f)) {
-    state = WeatherActivityState::NEEDS_WIFI;
-    requestUpdate();
-    return;
-  }
-  
   state = WeatherActivityState::NEEDS_WIFI;
   requestUpdate();
 }
@@ -71,15 +65,57 @@ void WeatherActivity::onWifiComplete(bool connected) {
   wifiConnected = connected;
   
   if (connected) {
-    if (strlen(SETTINGS.weatherLocationName) == 0 ||
-        (SETTINGS.weatherLatitude == 0.0f && SETTINGS.weatherLongitude == 0.0f)) {
-      startLocationSetup();
+    bool hasLocation = strlen(SETTINGS.weatherLocationName) > 0 &&
+                       (SETTINGS.weatherLatitude != 0.0f || SETTINGS.weatherLongitude != 0.0f);
+    
+    if (wantLocationSearch || !hasLocation) {
+      wantLocationSearch = false;
+      startLocationSearch();
     } else {
       fetchWeatherData();
     }
   } else {
     state = WeatherActivityState::DISPLAY_ERROR;
     errorMessage = tr(STR_WIFI_CONN_FAILED);
+    requestUpdate();
+  }
+}
+
+void WeatherActivity::startLocationSearch() {
+  state = WeatherActivityState::LOCATION_SEARCH;
+  requestUpdate();
+  
+  enterNewActivity(new LocationSearchActivity(
+      renderer, mappedInput,
+      [this](const GeocodingResult& location) {
+        onLocationSelected(location.getDisplayName(), location.latitude, location.longitude);
+      },
+      [this]() {
+        if (weatherFetched) {
+          state = WeatherActivityState::DISPLAY_WEATHER;
+        } else {
+          state = WeatherActivityState::NEEDS_WIFI;
+        }
+        menuIndex = 0;
+        requestUpdate();
+      }));
+}
+
+void WeatherActivity::onLocationSelected(const std::string& name, float latitude, float longitude) {
+  strncpy(SETTINGS.weatherLocationName, name.c_str(), sizeof(SETTINGS.weatherLocationName) - 1);
+  SETTINGS.weatherLocationName[sizeof(SETTINGS.weatherLocationName) - 1] = '\0';
+  SETTINGS.weatherLatitude = latitude;
+  SETTINGS.weatherLongitude = longitude;
+  SETTINGS.saveToFile();
+  
+  LOG_INF("WEATHER", "Location saved: %s (%.4f, %.4f)",
+          SETTINGS.weatherLocationName, SETTINGS.weatherLatitude, SETTINGS.weatherLongitude);
+  
+  if (wifiConnected) {
+    fetchWeatherData();
+  } else {
+    state = WeatherActivityState::NEEDS_WIFI;
+    menuIndex = 0;
     requestUpdate();
   }
 }
@@ -109,30 +145,6 @@ void WeatherActivity::fetchWeatherData() {
   requestUpdate();
 }
 
-void WeatherActivity::startLocationSetup() {
-  state = WeatherActivityState::LOCATION_SETUP;
-  menuIndex = 0;
-  pendingLocationName = SETTINGS.weatherLocationName;
-  pendingLatitude = SETTINGS.weatherLatitude != 0.0f ? 
-                    std::to_string(SETTINGS.weatherLatitude) : "";
-  pendingLongitude = SETTINGS.weatherLongitude != 0.0f ? 
-                     std::to_string(SETTINGS.weatherLongitude) : "";
-  requestUpdate();
-}
-
-void WeatherActivity::saveLocationSettings() {
-  strncpy(SETTINGS.weatherLocationName, pendingLocationName.c_str(),
-          sizeof(SETTINGS.weatherLocationName) - 1);
-  SETTINGS.weatherLocationName[sizeof(SETTINGS.weatherLocationName) - 1] = '\0';
-  
-  SETTINGS.weatherLatitude = static_cast<float>(atof(pendingLatitude.c_str()));
-  SETTINGS.weatherLongitude = static_cast<float>(atof(pendingLongitude.c_str()));
-  
-  SETTINGS.saveToFile();
-  LOG_INF("WEATHER", "Location saved: %s (%.4f, %.4f)",
-          SETTINGS.weatherLocationName, SETTINGS.weatherLatitude, SETTINGS.weatherLongitude);
-}
-
 std::string WeatherActivity::formatTemperature(float celsius) const {
   char buf[16];
   if (SETTINGS.useFahrenheit) {
@@ -154,7 +166,45 @@ void WeatherActivity::loop() {
       checkLocationAndProceed();
       break;
       
-    case WeatherActivityState::NEEDS_WIFI:
+    case WeatherActivityState::NEEDS_WIFI: {
+      bool hasLocation = strlen(SETTINGS.weatherLocationName) > 0 &&
+                         (SETTINGS.weatherLatitude != 0.0f || SETTINGS.weatherLongitude != 0.0f);
+      
+      int numOptions = hasLocation ? 2 : 1;
+      
+      buttonNavigator.onNext([this, numOptions] {
+        menuIndex = (menuIndex + 1) % numOptions;
+        requestUpdate();
+      });
+      buttonNavigator.onPrevious([this, numOptions] {
+        menuIndex = (menuIndex - 1 + numOptions) % numOptions;
+        requestUpdate();
+      });
+      
+      if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+        if (hasLocation) {
+          if (menuIndex == 0) {
+            // Refresh weather
+            wantLocationSearch = false;
+            startWifiConnection();
+          } else {
+            // Change location
+            wantLocationSearch = true;
+            startWifiConnection();
+          }
+        } else {
+          // No location - search for one
+          wantLocationSearch = true;
+          startWifiConnection();
+        }
+      }
+      if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
+        onGoHome();
+      }
+      break;
+    }
+      
+    case WeatherActivityState::DISPLAY_WEATHER: {
       buttonNavigator.onNext([this] {
         menuIndex = (menuIndex + 1) % 2;
         requestUpdate();
@@ -166,37 +216,20 @@ void WeatherActivity::loop() {
       
       if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
         if (menuIndex == 0) {
+          // Refresh weather
+          wantLocationSearch = false;
           startWifiConnection();
         } else {
-          startLocationSetup();
+          // Change location - need WiFi for geocoding
+          wantLocationSearch = true;
+          startWifiConnection();
         }
       }
       if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
         onGoHome();
       }
       break;
-      
-    case WeatherActivityState::DISPLAY_WEATHER:
-      buttonNavigator.onNext([this] {
-        menuIndex = (menuIndex + 1) % 2;
-        requestUpdate();
-      });
-      buttonNavigator.onPrevious([this] {
-        menuIndex = (menuIndex + 1) % 2;
-        requestUpdate();
-      });
-      
-      if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
-        if (menuIndex == 0) {
-          startWifiConnection();
-        } else {
-          startLocationSetup();
-        }
-      }
-      if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
-        onGoHome();
-      }
-      break;
+    }
       
     case WeatherActivityState::DISPLAY_ERROR:
       if (mappedInput.wasReleased(MappedInputManager::Button::Confirm) ||
@@ -204,76 +237,6 @@ void WeatherActivity::loop() {
         onGoHome();
       }
       break;
-      
-    case WeatherActivityState::LOCATION_SETUP: {
-      const int numItems = 4;
-      buttonNavigator.onNext([this, numItems] {
-        menuIndex = (menuIndex + 1) % numItems;
-        requestUpdate();
-      });
-      buttonNavigator.onPrevious([this, numItems] {
-        menuIndex = (menuIndex - 1 + numItems) % numItems;
-        requestUpdate();
-      });
-      
-      if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
-        switch (menuIndex) {
-          case 0:
-            state = WeatherActivityState::LOCATION_NAME_ENTRY;
-            enterNewActivity(new KeyboardEntryActivity(
-                renderer, mappedInput, tr(STR_WEATHER_LOCATION_NAME), pendingLocationName, 10, 64, false,
-                [this](const std::string& result) {
-                  pendingLocationName = result;
-                  state = WeatherActivityState::LOCATION_SETUP;
-                  requestUpdate();
-                }));
-            break;
-          case 1:
-            state = WeatherActivityState::LATITUDE_ENTRY;
-            enterNewActivity(new KeyboardEntryActivity(
-                renderer, mappedInput, tr(STR_WEATHER_ENTER_LATITUDE), pendingLatitude, 10, 16, false,
-                [this](const std::string& result) {
-                  pendingLatitude = result;
-                  state = WeatherActivityState::LOCATION_SETUP;
-                  requestUpdate();
-                }));
-            break;
-          case 2:
-            state = WeatherActivityState::LONGITUDE_ENTRY;
-            enterNewActivity(new KeyboardEntryActivity(
-                renderer, mappedInput, tr(STR_WEATHER_ENTER_LONGITUDE), pendingLongitude, 10, 16, false,
-                [this](const std::string& result) {
-                  pendingLongitude = result;
-                  state = WeatherActivityState::LOCATION_SETUP;
-                  requestUpdate();
-                }));
-            break;
-          case 3:
-            if (!pendingLocationName.empty() && !pendingLatitude.empty() && !pendingLongitude.empty()) {
-              saveLocationSettings();
-              if (wifiConnected) {
-                fetchWeatherData();
-              } else {
-                state = WeatherActivityState::NEEDS_WIFI;
-                menuIndex = 0;
-                requestUpdate();
-              }
-            }
-            break;
-        }
-      }
-      if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
-        if (weatherFetched) {
-          state = WeatherActivityState::DISPLAY_WEATHER;
-          menuIndex = 0;
-        } else {
-          state = WeatherActivityState::NEEDS_WIFI;
-          menuIndex = 0;
-        }
-        requestUpdate();
-      }
-      break;
-    }
       
     default:
       break;
@@ -296,12 +259,6 @@ void WeatherActivity::render(Activity::RenderLock&&) {
       break;
     case WeatherActivityState::DISPLAY_ERROR:
       renderError();
-      break;
-    case WeatherActivityState::LOCATION_SETUP:
-    case WeatherActivityState::LOCATION_NAME_ENTRY:
-    case WeatherActivityState::LATITUDE_ENTRY:
-    case WeatherActivityState::LONGITUDE_ENTRY:
-      renderLocationSetup();
       break;
     default:
       break;
@@ -333,22 +290,31 @@ void WeatherActivity::renderNeedsWifi() {
   bool hasLocation = strlen(SETTINGS.weatherLocationName) > 0 &&
                      (SETTINGS.weatherLatitude != 0.0f || SETTINGS.weatherLongitude != 0.0f);
   
-  std::vector<const char*> menuItems;
-  if (hasLocation) {
-    menuItems = {tr(STR_WEATHER_REFRESH), tr(STR_WEATHER_CONFIGURE)};
-  } else {
-    menuItems = {tr(STR_CONNECT), tr(STR_WEATHER_SET_LOCATION)};
-  }
-  
   int contentY = metrics.headerHeight + metrics.verticalSpacing;
   int contentHeight = pageHeight - metrics.headerHeight - metrics.buttonHintsHeight - metrics.verticalSpacing * 2;
   
-  if (!hasLocation) {
+  if (hasLocation) {
+    int textY = contentY + 10;
+    renderer.setFont(UI_12_FONT_ID);
+    renderer.drawTextCenteredX(pageWidth / 2, textY, tr(STR_WEATHER_LOCATION));
+    textY += 25;
+    renderer.setFont(UI_12_FONT_ID, EpdFontFamily::BOLD);
+    renderer.drawTextCenteredX(pageWidth / 2, textY, SETTINGS.weatherLocationName);
+    contentY = textY + 40;
+    contentHeight -= 75;
+  } else {
     int textY = contentY + 20;
     renderer.setFont(UI_12_FONT_ID);
     renderer.drawTextCenteredX(pageWidth / 2, textY, tr(STR_WEATHER_NO_LOCATION));
     contentY = textY + 40;
     contentHeight -= 60;
+  }
+  
+  std::vector<const char*> menuItems;
+  if (hasLocation) {
+    menuItems = {tr(STR_WEATHER_REFRESH), tr(STR_WEATHER_CHANGE_LOCATION)};
+  } else {
+    menuItems = {tr(STR_WEATHER_SEARCH_LOCATION)};
   }
   
   GUI.drawButtonMenu(renderer, Rect{0, contentY, pageWidth, contentHeight},
@@ -414,7 +380,7 @@ void WeatherActivity::renderWeatherDisplay() {
   renderer.drawTextCenteredX(pageWidth / 2, contentY, precipLine);
   contentY += 50;
   
-  std::vector<const char*> menuItems = {tr(STR_WEATHER_REFRESH), tr(STR_WEATHER_CONFIGURE)};
+  std::vector<const char*> menuItems = {tr(STR_WEATHER_REFRESH), tr(STR_WEATHER_CHANGE_LOCATION)};
   int menuHeight = pageHeight - contentY - metrics.buttonHintsHeight - metrics.verticalSpacing;
   
   GUI.drawButtonMenu(renderer, Rect{0, contentY, pageWidth, menuHeight},
@@ -442,46 +408,6 @@ void WeatherActivity::renderError() {
   renderer.drawTextCenteredX(pageWidth / 2, centerY + 10, errorMessage.c_str());
   
   const auto labels = mappedInput.mapLabels(tr(STR_BACK), "", "", "");
-  GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
-  
-  renderer.displayBuffer();
-}
-
-void WeatherActivity::renderLocationSetup() {
-  const auto pageWidth = renderer.getScreenWidth();
-  const auto pageHeight = renderer.getScreenHeight();
-  auto metrics = UITheme::getInstance().getMetrics();
-  
-  renderer.clearScreen();
-  
-  GUI.drawHeader(renderer, Rect{0, 0, pageWidth, metrics.headerHeight}, tr(STR_WEATHER_SET_LOCATION));
-  
-  int contentY = metrics.headerHeight + metrics.verticalSpacing;
-  int contentHeight = pageHeight - metrics.headerHeight - metrics.buttonHintsHeight - metrics.verticalSpacing * 2;
-  
-  char nameLabel[128];
-  snprintf(nameLabel, sizeof(nameLabel), "%s: %s", tr(STR_WEATHER_LOCATION_NAME),
-           pendingLocationName.empty() ? tr(STR_NOT_SET) : pendingLocationName.c_str());
-  
-  char latLabel[64];
-  snprintf(latLabel, sizeof(latLabel), "Latitude: %s",
-           pendingLatitude.empty() ? tr(STR_NOT_SET) : pendingLatitude.c_str());
-  
-  char lonLabel[64];
-  snprintf(lonLabel, sizeof(lonLabel), "Longitude: %s",
-           pendingLongitude.empty() ? tr(STR_NOT_SET) : pendingLongitude.c_str());
-  
-  bool canSave = !pendingLocationName.empty() && !pendingLatitude.empty() && !pendingLongitude.empty();
-  const char* saveLabel = canSave ? tr(STR_SAVE) : tr(STR_SAVE);
-  
-  std::vector<std::string> menuItems = {nameLabel, latLabel, lonLabel, saveLabel};
-  
-  GUI.drawList(renderer, Rect{0, contentY, pageWidth, contentHeight},
-               static_cast<int>(menuItems.size()), menuIndex, 0,
-               [&menuItems](int index) { return menuItems[index]; },
-               nullptr, nullptr);
-  
-  const auto labels = mappedInput.mapLabels(tr(STR_BACK), tr(STR_SELECT), tr(STR_DIR_UP), tr(STR_DIR_DOWN));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
   
   renderer.displayBuffer();

@@ -14,10 +14,7 @@ enum class WeatherActivityState {
   FETCHING_WEATHER,    // Fetching weather data
   DISPLAY_WEATHER,     // Showing weather info
   DISPLAY_ERROR,       // Showing error
-  LOCATION_SETUP,      // Setting up location
-  LOCATION_NAME_ENTRY, // Entering location name
-  LATITUDE_ENTRY,      // Entering latitude
-  LONGITUDE_ENTRY      // Entering longitude
+  LOCATION_SEARCH      // Searching for location
 };
 
 class WeatherActivity final : public ActivityWithSubactivity {
@@ -31,12 +28,9 @@ class WeatherActivity final : public ActivityWithSubactivity {
   
   bool wifiConnected = false;
   bool weatherFetched = false;
+  bool wantLocationSearch = false;  // True if user wants to change/set location
   
   int menuIndex = 0;
-  
-  std::string pendingLocationName;
-  std::string pendingLatitude;
-  std::string pendingLongitude;
   
   void checkLocationAndProceed();
   void startWifiConnection();
@@ -49,10 +43,9 @@ class WeatherActivity final : public ActivityWithSubactivity {
   void renderFetchingWeather();
   void renderWeatherDisplay();
   void renderError();
-  void renderLocationSetup();
   
-  void startLocationSetup();
-  void saveLocationSettings();
+  void startLocationSearch();
+  void onLocationSelected(const std::string& name, float latitude, float longitude);
   
   std::string formatTemperature(float celsius) const;
   const char* getConditionText(WeatherCondition condition) const;
