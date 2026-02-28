@@ -120,7 +120,7 @@ void WeatherActivity::autoDetectLocation() {
   if (ipLocation.valid) {
     onLocationSelected(ipLocation.getDisplayName(), ipLocation.latitude, ipLocation.longitude);
   } else {
-    LOG_WRN("WEATHER", "Auto-detect failed, falling back to search");
+    LOG_ERR("WEATHER", "Auto-detect failed, falling back to search");
     startLocationSearch();
   }
 }
