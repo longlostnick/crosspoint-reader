@@ -237,7 +237,7 @@ void HomeActivity::render(RenderLock&&) {
     menuIcons.push_back(Library);
   }
   menuItems.push_back(tr(STR_WEATHER));
-  menuIcons.push_back(Weather);
+  menuIcons.push_back(Settings);  // Reusing gear icon for weather app
   menuItems.push_back(tr(STR_FILE_TRANSFER));
   menuIcons.push_back(Transfer);
   menuItems.push_back(tr(STR_SETTINGS_TITLE));
