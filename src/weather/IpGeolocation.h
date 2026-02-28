@@ -10,6 +10,7 @@ struct IpLocationResult {
   std::string city;
   std::string region;
   std::string country;
+  std::string countryCode;  // 2-char ISO code
   float latitude = 0.0f;
   float longitude = 0.0f;
   
@@ -31,5 +32,5 @@ public:
   static IpLocationResult getLocation();
   
 private:
-  static constexpr const char* API_URL = "http://ip-api.com/json/?fields=status,city,regionName,country,lat,lon";
+  static constexpr const char* API_URL = "http://ip-api.com/json/?fields=status,city,regionName,country,countryCode,lat,lon";
 };

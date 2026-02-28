@@ -9,12 +9,13 @@
 struct GeocodingResult {
   std::string name;        // City/place name
   std::string country;     // Country name
+  std::string countryCode; // 2-char ISO country code (e.g., "US", "DE")
   std::string admin1;      // State/province/region
   float latitude;
   float longitude;
   int population;          // For sorting by relevance
   
-  // Get a display string like "San Francisco, California, United States"
+  // Get a display string like "San Francisco, California, US"
   std::string getDisplayName() const;
 };
 

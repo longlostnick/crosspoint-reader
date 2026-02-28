@@ -4,50 +4,18 @@
 #include <Logging.h>
 
 #include <cstdio>
-#include <unordered_map>
 
 #include "network/HttpDownloader.h"
-
-static std::string abbreviateState(const std::string& state) {
-  static const std::unordered_map<std::string, std::string> usStates = {
-    {"Alabama", "AL"}, {"Alaska", "AK"}, {"Arizona", "AZ"}, {"Arkansas", "AR"},
-    {"California", "CA"}, {"Colorado", "CO"}, {"Connecticut", "CT"}, {"Delaware", "DE"},
-    {"Florida", "FL"}, {"Georgia", "GA"}, {"Hawaii", "HI"}, {"Idaho", "ID"},
-    {"Illinois", "IL"}, {"Indiana", "IN"}, {"Iowa", "IA"}, {"Kansas", "KS"},
-    {"Kentucky", "KY"}, {"Louisiana", "LA"}, {"Maine", "ME"}, {"Maryland", "MD"},
-    {"Massachusetts", "MA"}, {"Michigan", "MI"}, {"Minnesota", "MN"}, {"Mississippi", "MS"},
-    {"Missouri", "MO"}, {"Montana", "MT"}, {"Nebraska", "NE"}, {"Nevada", "NV"},
-    {"New Hampshire", "NH"}, {"New Jersey", "NJ"}, {"New Mexico", "NM"}, {"New York", "NY"},
-    {"North Carolina", "NC"}, {"North Dakota", "ND"}, {"Ohio", "OH"}, {"Oklahoma", "OK"},
-    {"Oregon", "OR"}, {"Pennsylvania", "PA"}, {"Rhode Island", "RI"}, {"South Carolina", "SC"},
-    {"South Dakota", "SD"}, {"Tennessee", "TN"}, {"Texas", "TX"}, {"Utah", "UT"},
-    {"Vermont", "VT"}, {"Virginia", "VA"}, {"Washington", "WA"}, {"West Virginia", "WV"},
-    {"Wisconsin", "WI"}, {"Wyoming", "WY"}, {"District of Columbia", "DC"}
-  };
-  auto it = usStates.find(state);
-  return it != usStates.end() ? it->second : state;
-}
-
-static std::string abbreviateCountry(const std::string& country) {
-  static const std::unordered_map<std::string, std::string> countries = {
-    {"United States", "USA"}, {"United Kingdom", "UK"}, {"United Arab Emirates", "UAE"},
-    {"Russian Federation", "Russia"}, {"Republic of Korea", "S. Korea"},
-    {"Democratic People's Republic of Korea", "N. Korea"}
-  };
-  auto it = countries.find(country);
-  return it != countries.end() ? it->second : country;
-}
 
 std::string GeocodingResult::getDisplayName() const {
   std::string result = name;
   if (!admin1.empty()) {
-    result += ", " + abbreviateState(admin1);
+    result += ", " + admin1;
   }
-  if (!country.empty()) {
-    std::string shortCountry = abbreviateCountry(country);
-    if (shortCountry != "USA" || admin1.empty()) {
-      result += ", " + shortCountry;
-    }
+  if (!countryCode.empty()) {
+    result += ", " + countryCode;
+  } else if (!country.empty()) {
+    result += ", " + country;
   }
   return result;
 }
@@ -114,6 +82,9 @@ std::vector<GeocodingResult> OpenMeteoGeocoding::search(const std::string& query
     
     if (item.containsKey("country")) {
       result.country = item["country"].as<const char*>();
+    }
+    if (item.containsKey("country_code")) {
+      result.countryCode = item["country_code"].as<const char*>();
     }
     if (item.containsKey("admin1")) {
       result.admin1 = item["admin1"].as<const char*>();
