@@ -182,12 +182,11 @@ void LocationSearchActivity::renderNoResults() {
   GUI.drawHeader(renderer, Rect{0, 0, pageWidth, metrics.headerHeight}, tr(STR_WEATHER_SEARCH_LOCATION));
   
   int centerY = pageHeight / 2;
-  renderer.setFont(UI_12_FONT_ID);
   
   char msg[128];
   snprintf(msg, sizeof(msg), "%s \"%s\"", tr(STR_WEATHER_NO_RESULTS_FOR), searchQuery.c_str());
-  renderer.drawTextCenteredX(pageWidth / 2, centerY - 10, msg);
-  renderer.drawTextCenteredX(pageWidth / 2, centerY + 20, tr(STR_WEATHER_TRY_AGAIN));
+  renderer.drawCenteredText(UI_12_FONT_ID, centerY - 10, msg);
+  renderer.drawCenteredText(UI_12_FONT_ID, centerY + 20, tr(STR_WEATHER_TRY_AGAIN));
   
   const auto labels = mappedInput.mapLabels(tr(STR_CANCEL), tr(STR_RETRY), "", "");
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
@@ -205,9 +204,8 @@ void LocationSearchActivity::renderError() {
   GUI.drawHeader(renderer, Rect{0, 0, pageWidth, metrics.headerHeight}, tr(STR_WEATHER_SEARCH_LOCATION));
   
   int centerY = pageHeight / 2;
-  renderer.setFont(UI_12_FONT_ID);
-  renderer.drawTextCenteredX(pageWidth / 2, centerY - 10, tr(STR_ERROR_MSG));
-  renderer.drawTextCenteredX(pageWidth / 2, centerY + 20, errorMessage.c_str());
+  renderer.drawCenteredText(UI_12_FONT_ID, centerY - 10, tr(STR_ERROR_MSG));
+  renderer.drawCenteredText(UI_12_FONT_ID, centerY + 20, errorMessage.c_str());
   
   const auto labels = mappedInput.mapLabels(tr(STR_CANCEL), tr(STR_RETRY), "", "");
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);

@@ -13,6 +13,7 @@
 #include "MappedInputManager.h"
 #include "activities/network/WifiSelectionActivity.h"
 #include "components/UITheme.h"
+#include "fontIds.h"
 #include "weather/IpGeolocation.h"
 #include "weather/OpenMeteoProvider.h"
 
@@ -326,17 +327,14 @@ void WeatherActivity::renderNeedsWifi() {
   
   if (hasLocation) {
     int textY = contentY + 10;
-    renderer.setFont(UI_12_FONT_ID);
-    renderer.drawTextCenteredX(pageWidth / 2, textY, tr(STR_WEATHER_LOCATION));
+    renderer.drawCenteredText(UI_12_FONT_ID, textY, tr(STR_WEATHER_LOCATION));
     textY += 25;
-    renderer.setFont(UI_12_FONT_ID, EpdFontFamily::BOLD);
-    renderer.drawTextCenteredX(pageWidth / 2, textY, SETTINGS.weatherLocationName);
+    renderer.drawCenteredText(UI_12_FONT_ID, textY, SETTINGS.weatherLocationName, true, EpdFontFamily::BOLD);
     contentY = textY + 40;
     contentHeight -= 75;
   } else {
     int textY = contentY + 20;
-    renderer.setFont(UI_12_FONT_ID);
-    renderer.drawTextCenteredX(pageWidth / 2, textY, tr(STR_WEATHER_NO_LOCATION));
+    renderer.drawCenteredText(UI_12_FONT_ID, textY, tr(STR_WEATHER_NO_LOCATION));
     contentY = textY + 40;
     contentHeight -= 60;
   }
@@ -382,33 +380,29 @@ void WeatherActivity::renderWeatherDisplay() {
   
   int contentY = metrics.headerHeight + metrics.verticalSpacing * 2;
   
-  renderer.setFont(UI_12_FONT_ID);
-  renderer.drawTextCenteredX(pageWidth / 2, contentY, weatherData.locationName.c_str());
+  renderer.drawCenteredText(UI_12_FONT_ID, contentY, weatherData.locationName.c_str());
   contentY += 30;
   
-  renderer.setFont(UI_12_FONT_ID, EpdFontFamily::BOLD);
   const char* conditionText = getConditionText(weatherData.condition);
-  renderer.drawTextCenteredX(pageWidth / 2, contentY, conditionText);
+  renderer.drawCenteredText(UI_12_FONT_ID, contentY, conditionText, true, EpdFontFamily::BOLD);
   contentY += 40;
-  
-  renderer.setFont(UI_12_FONT_ID);
   
   char tempLine[64];
   snprintf(tempLine, sizeof(tempLine), "%s: %s", tr(STR_WEATHER_CURRENT),
            formatTemperature(weatherData.temperatureCurrent).c_str());
-  renderer.drawTextCenteredX(pageWidth / 2, contentY, tempLine);
+  renderer.drawCenteredText(UI_12_FONT_ID, contentY, tempLine);
   contentY += 30;
   
   char highLowLine[64];
   snprintf(highLowLine, sizeof(highLowLine), "%s: %s  /  %s: %s",
            tr(STR_WEATHER_HIGH), formatTemperature(weatherData.temperatureHigh).c_str(),
            tr(STR_WEATHER_LOW), formatTemperature(weatherData.temperatureLow).c_str());
-  renderer.drawTextCenteredX(pageWidth / 2, contentY, highLowLine);
+  renderer.drawCenteredText(UI_12_FONT_ID, contentY, highLowLine);
   contentY += 30;
   
   char precipLine[64];
   snprintf(precipLine, sizeof(precipLine), "%s: %d%%", tr(STR_WEATHER_PRECIP), weatherData.precipitationChance);
-  renderer.drawTextCenteredX(pageWidth / 2, contentY, precipLine);
+  renderer.drawCenteredText(UI_12_FONT_ID, contentY, precipLine);
   contentY += 50;
   
   std::vector<const char*> menuItems = {tr(STR_WEATHER_REFRESH), tr(STR_WEATHER_CHANGE_LOCATION)};
@@ -434,9 +428,8 @@ void WeatherActivity::renderError() {
   GUI.drawHeader(renderer, Rect{0, 0, pageWidth, metrics.headerHeight}, tr(STR_WEATHER_TITLE));
   
   int centerY = pageHeight / 2;
-  renderer.setFont(UI_12_FONT_ID);
-  renderer.drawTextCenteredX(pageWidth / 2, centerY - 20, tr(STR_ERROR_MSG));
-  renderer.drawTextCenteredX(pageWidth / 2, centerY + 10, errorMessage.c_str());
+  renderer.drawCenteredText(UI_12_FONT_ID, centerY - 20, tr(STR_ERROR_MSG));
+  renderer.drawCenteredText(UI_12_FONT_ID, centerY + 10, errorMessage.c_str());
   
   const auto labels = mappedInput.mapLabels(tr(STR_BACK), "", "", "");
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
