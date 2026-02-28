@@ -237,7 +237,7 @@ void HomeActivity::render(RenderLock&&) {
     menuIcons.push_back(Library);
   }
   menuItems.push_back(tr(STR_WEATHER));
-  menuIcons.push_back(Cog);  // Using Cog as placeholder for weather
+  menuIcons.push_back(Wifi);  // Weather needs internet, using Wifi icon
   menuItems.push_back(tr(STR_FILE_TRANSFER));
   menuIcons.push_back(Transfer);
   menuItems.push_back(tr(STR_SETTINGS_TITLE));
