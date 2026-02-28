@@ -198,7 +198,7 @@ class CrossPointSettings {
   char weatherLocationName[64] = "";  // User-friendly location name
   float weatherLatitude = 0.0f;       // Location latitude for weather
   float weatherLongitude = 0.0f;      // Location longitude for weather
-  uint8_t useFahrenheit = 0;          // 0 = Celsius, 1 = Fahrenheit
+  uint8_t useFahrenheit = 1;          // 0 = Celsius, 1 = Fahrenheit (default to F)
 
   // Custom OTA update URL (GitHub releases API format)
   // If set, overrides the default update URL for checking firmware updates
