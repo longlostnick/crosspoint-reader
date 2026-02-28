@@ -11,7 +11,7 @@
 #include "weather/OpenMeteoGeocoding.h"
 
 void LocationSearchActivity::onEnter() {
-  ActivityWithSubactivity::onEnter();
+  Activity::onEnter();
   
   state = LocationSearchState::ENTER_QUERY;
   searchQuery.clear();
@@ -23,7 +23,7 @@ void LocationSearchActivity::onEnter() {
 }
 
 void LocationSearchActivity::onExit() {
-  ActivityWithSubactivity::onExit();
+  Activity::onExit();
 }
 
 void LocationSearchActivity::startSearch() {
@@ -107,7 +107,7 @@ void LocationSearchActivity::loop() {
   }
 }
 
-void LocationSearchActivity::render(Activity::RenderLock&&) {
+void LocationSearchActivity::render(RenderLock&&) {
   switch (state) {
     case LocationSearchState::ENTER_QUERY:
       renderEnterQuery();

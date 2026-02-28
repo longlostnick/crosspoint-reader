@@ -18,7 +18,7 @@
 #include "weather/OpenMeteoProvider.h"
 
 void WeatherActivity::onEnter() {
-  ActivityWithSubactivity::onEnter();
+  Activity::onEnter();
   
   state = WeatherActivityState::CHECKING_LOCATION;
   wifiConnected = false;
@@ -33,7 +33,7 @@ void WeatherActivity::onEnter() {
 }
 
 void WeatherActivity::onExit() {
-  ActivityWithSubactivity::onExit();
+  Activity::onExit();
   
   disconnectWifi();
 }
@@ -275,7 +275,7 @@ void WeatherActivity::loop() {
   }
 }
 
-void WeatherActivity::render(Activity::RenderLock&&) {
+void WeatherActivity::render(RenderLock&&) {
   switch (state) {
     case WeatherActivityState::CHECKING_LOCATION:
       renderCheckingLocation();

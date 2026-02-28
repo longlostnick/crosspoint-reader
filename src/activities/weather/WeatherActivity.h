@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "activities/ActivityWithSubactivity.h"
+#include "activities/Activity.h"
 #include "util/ButtonNavigator.h"
 #include "weather/WeatherProvider.h"
 
@@ -16,7 +16,7 @@ enum class WeatherActivityState {
   LOCATION_SEARCH      // Searching for location
 };
 
-class WeatherActivity final : public ActivityWithSubactivity {
+class WeatherActivity final : public Activity {
   ButtonNavigator buttonNavigator;
   
   WeatherActivityState state = WeatherActivityState::CHECKING_LOCATION;
@@ -51,10 +51,10 @@ class WeatherActivity final : public ActivityWithSubactivity {
   
 public:
   explicit WeatherActivity(GfxRenderer& renderer, MappedInputManager& mappedInput)
-      : ActivityWithSubactivity("Weather", renderer, mappedInput) {}
+      : Activity("Weather", renderer, mappedInput) {}
   
   void onEnter() override;
   void onExit() override;
   void loop() override;
-  void render(Activity::RenderLock&&) override;
+  void render(RenderLock&&) override;
 };

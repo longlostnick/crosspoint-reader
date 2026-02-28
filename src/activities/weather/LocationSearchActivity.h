@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "activities/ActivityWithSubactivity.h"
+#include "activities/Activity.h"
 #include "util/ButtonNavigator.h"
 #include "weather/GeocodingProvider.h"
 
@@ -20,7 +20,7 @@ enum class LocationSearchState {
  * Activity for searching and selecting a location by name.
  * Uses geocoding API to convert city names to coordinates.
  */
-class LocationSearchActivity final : public ActivityWithSubactivity {
+class LocationSearchActivity final : public Activity {
   ButtonNavigator buttonNavigator;
   
   LocationSearchState state = LocationSearchState::ENTER_QUERY;
@@ -45,12 +45,12 @@ public:
   explicit LocationSearchActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
                                   const std::function<void(const GeocodingResult& location)>& onLocationSelected,
                                   const std::function<void()>& onCancel)
-      : ActivityWithSubactivity("LocationSearch", renderer, mappedInput),
+      : Activity("LocationSearch", renderer, mappedInput),
         onLocationSelected(onLocationSelected),
         onCancel(onCancel) {}
   
   void onEnter() override;
   void onExit() override;
   void loop() override;
-  void render(Activity::RenderLock&&) override;
+  void render(RenderLock&&) override;
 };
