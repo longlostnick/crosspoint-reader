@@ -4,6 +4,8 @@
 #include <I18n.h>
 #include <Logging.h>
 
+#include <memory>
+
 #include "MappedInputManager.h"
 #include "activities/util/KeyboardEntryActivity.h"
 #include "components/UITheme.h"
@@ -29,19 +31,26 @@ void LocationSearchActivity::onExit() {
 void LocationSearchActivity::startSearch() {
   state = LocationSearchState::ENTER_QUERY;
   
-  enterNewActivity(new KeyboardEntryActivity(
-      renderer, mappedInput, tr(STR_WEATHER_SEARCH_LOCATION), searchQuery, 10, 64, false,
-      [this](const std::string& result) {
-        searchQuery = result;
-        if (!searchQuery.empty()) {
-          performSearch();
-        } else {
-          onCancel();
+  startActivityForResult(
+      std::make_unique<KeyboardEntryActivity>(renderer, mappedInput, tr(STR_WEATHER_SEARCH_LOCATION), searchQuery, 64, false),
+      [this](const ActivityResult& result) {
+        if (result.isCancelled) {
+          ActivityResult cancelResult;
+          cancelResult.isCancelled = true;
+          setResult(std::move(cancelResult));
+          finish();
+        } else if (auto* keyboardResult = std::get_if<KeyboardResult>(&result.data)) {
+          searchQuery = keyboardResult->text;
+          if (!searchQuery.empty()) {
+            performSearch();
+          } else {
+            ActivityResult cancelResult;
+            cancelResult.isCancelled = true;
+            setResult(std::move(cancelResult));
+            finish();
+          }
         }
-      },
-      [this]() {
-        onCancel();
-      }));
+      });
 }
 
 void LocationSearchActivity::performSearch() {
@@ -82,7 +91,9 @@ void LocationSearchActivity::loop() {
       
       if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
         if (selectedResultIndex >= 0 && selectedResultIndex < numResults) {
-          onLocationSelected(searchResults[selectedResultIndex]);
+          const auto& location = searchResults[selectedResultIndex];
+          setResult(LocationResult{location.getDisplayName(), location.latitude, location.longitude});
+          finish();
         }
       }
       
@@ -98,7 +109,10 @@ void LocationSearchActivity::loop() {
         startSearch();
       }
       if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
-        onCancel();
+        ActivityResult cancelResult;
+        cancelResult.isCancelled = true;
+        setResult(std::move(cancelResult));
+        finish();
       }
       break;
       

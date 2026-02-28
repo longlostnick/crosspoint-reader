@@ -7,6 +7,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <memory>
 
 #include "CrossPointSettings.h"
 #include "LocationSearchActivity.h"
@@ -58,10 +59,10 @@ void WeatherActivity::startWifiConnection() {
   state = WeatherActivityState::WIFI_CONNECTING;
   requestUpdate();
   
-  enterNewActivity(new WifiSelectionActivity(
-      renderer, mappedInput,
-      [this](bool connected) { onWifiComplete(connected); },
-      true));
+  WiFi.mode(WIFI_STA);
+  
+  startActivityForResult(std::make_unique<WifiSelectionActivity>(renderer, mappedInput),
+                         [this](const ActivityResult& result) { onWifiComplete(!result.isCancelled); });
 }
 
 void WeatherActivity::onWifiComplete(bool connected) {
@@ -91,20 +92,21 @@ void WeatherActivity::startLocationSearch() {
   state = WeatherActivityState::LOCATION_SEARCH;
   requestUpdate();
   
-  enterNewActivity(new LocationSearchActivity(
-      renderer, mappedInput,
-      [this](const GeocodingResult& location) {
-        onLocationSelected(location.getDisplayName(), location.latitude, location.longitude);
-      },
-      [this]() {
-        if (weatherFetched) {
-          state = WeatherActivityState::DISPLAY_WEATHER;
-        } else {
-          state = WeatherActivityState::NEEDS_WIFI;
+  startActivityForResult(
+      std::make_unique<LocationSearchActivity>(renderer, mappedInput),
+      [this](const ActivityResult& result) {
+        if (result.isCancelled) {
+          if (weatherFetched) {
+            state = WeatherActivityState::DISPLAY_WEATHER;
+          } else {
+            state = WeatherActivityState::NEEDS_WIFI;
+          }
+          menuIndex = 0;
+          requestUpdate();
+        } else if (auto* locationResult = std::get_if<LocationResult>(&result.data)) {
+          onLocationSelected(locationResult->name, locationResult->latitude, locationResult->longitude);
         }
-        menuIndex = 0;
-        requestUpdate();
-      }));
+      });
 }
 
 void WeatherActivity::autoDetectLocation() {

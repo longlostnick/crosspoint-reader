@@ -1,6 +1,5 @@
 #pragma once
 
-#include <functional>
 #include <string>
 #include <vector>
 
@@ -19,6 +18,7 @@ enum class LocationSearchState {
 /**
  * Activity for searching and selecting a location by name.
  * Uses geocoding API to convert city names to coordinates.
+ * Returns LocationResult via setResult() when a location is selected.
  */
 class LocationSearchActivity final : public Activity {
   ButtonNavigator buttonNavigator;
@@ -28,9 +28,6 @@ class LocationSearchActivity final : public Activity {
   std::vector<GeocodingResult> searchResults;
   int selectedResultIndex = 0;
   std::string errorMessage;
-  
-  const std::function<void(const GeocodingResult& location)> onLocationSelected;
-  const std::function<void()> onCancel;
   
   void startSearch();
   void performSearch();
@@ -42,12 +39,8 @@ class LocationSearchActivity final : public Activity {
   void renderError();
   
 public:
-  explicit LocationSearchActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
-                                  const std::function<void(const GeocodingResult& location)>& onLocationSelected,
-                                  const std::function<void()>& onCancel)
-      : Activity("LocationSearch", renderer, mappedInput),
-        onLocationSelected(onLocationSelected),
-        onCancel(onCancel) {}
+  explicit LocationSearchActivity(GfxRenderer& renderer, MappedInputManager& mappedInput)
+      : Activity("LocationSearch", renderer, mappedInput) {}
   
   void onEnter() override;
   void onExit() override;

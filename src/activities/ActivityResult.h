@@ -50,8 +50,14 @@ struct FootnoteResult {
   std::string href;
 };
 
+struct LocationResult {
+  std::string name;
+  float latitude = 0.0f;
+  float longitude = 0.0f;
+};
+
 using ResultVariant = std::variant<std::monostate, WifiResult, KeyboardResult, MenuResult, ChapterResult, PercentResult,
-                                   PageResult, SyncResult, NetworkModeResult, FootnoteResult>;
+                                   PageResult, SyncResult, NetworkModeResult, FootnoteResult, LocationResult>;
 
 struct ActivityResult {
   bool isCancelled = false;
