@@ -109,10 +109,6 @@ inline std::vector<SettingInfo> getSettingsList() {
           },
           "koMatchMethod", StrId::STR_KOREADER_SYNC),
 
-      // --- System (continued) ---
-      SettingInfo::String(StrId::STR_CUSTOM_OTA_URL, SETTINGS.customOtaUrl, sizeof(SETTINGS.customOtaUrl),
-                          "customOtaUrl", StrId::STR_CAT_SYSTEM),
-
       // --- OPDS Browser (web-only, uses CrossPointSettings char arrays) ---
       SettingInfo::String(StrId::STR_OPDS_SERVER_URL, SETTINGS.opdsServerUrl, sizeof(SETTINGS.opdsServerUrl),
                           "opdsServerUrl", StrId::STR_OPDS_BROWSER),

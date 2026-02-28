@@ -3,23 +3,12 @@
 #include <ArduinoJson.h>
 #include <Logging.h>
 
-#include <cstring>
-
-#include "CrossPointSettings.h"
 #include "esp_http_client.h"
 #include "esp_https_ota.h"
 #include "esp_wifi.h"
 
 namespace {
-constexpr char defaultReleaseUrl[] = "https://api.github.com/repos/crosspoint-reader/crosspoint-reader/releases/latest";
-
-const char* getOtaUrl() {
-  if (strlen(SETTINGS.customOtaUrl) > 0) {
-    LOG_INF("OTA", "Using custom OTA URL: %s", SETTINGS.customOtaUrl);
-    return SETTINGS.customOtaUrl;
-  }
-  return defaultReleaseUrl;
-}
+constexpr char latestReleaseUrl[] = "https://api.github.com/repos/crosspoint-reader/crosspoint-reader/releases/latest";
 
 /* This is buffer and size holder to keep upcoming data from latestReleaseUrl */
 char* local_buf;
@@ -76,7 +65,7 @@ OtaUpdater::OtaUpdaterError OtaUpdater::checkForUpdate() {
   esp_err_t esp_err;
   JsonDocument doc;
 
-  const char* releaseUrl = getOtaUrl();
+  const char* releaseUrl = latestReleaseUrl;
 
   esp_http_client_config_t client_config = {
       .url = releaseUrl,
