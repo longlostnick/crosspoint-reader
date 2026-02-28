@@ -194,6 +194,16 @@ class CrossPointSettings {
   // Use book's embedded CSS styles for EPUB rendering (1 = enabled, 0 = disabled)
   uint8_t embeddedStyle = 1;
 
+  // Weather settings
+  char weatherLocationName[64] = "";  // User-friendly location name
+  float weatherLatitude = 0.0f;       // Location latitude for weather
+  float weatherLongitude = 0.0f;      // Location longitude for weather
+  uint8_t useFahrenheit = 1;          // 0 = Celsius, 1 = Fahrenheit (default to F)
+
+  // Custom OTA update URL (GitHub releases API format)
+  // If set, overrides the default update URL for checking firmware updates
+  // Example: https://api.github.com/repos/username/repo/releases/latest
+
   ~CrossPointSettings() = default;
 
   // Get singleton instance

@@ -12,6 +12,7 @@
 #include "reader/ReaderActivity.h"
 #include "settings/SettingsActivity.h"
 #include "util/FullScreenMessageActivity.h"
+#include "weather/WeatherActivity.h"
 
 void ActivityManager::begin() {
   xTaskCreate(&renderTaskTrampoline, "ActivityManagerRender",
@@ -174,6 +175,10 @@ void ActivityManager::goToBrowser() {
 
 void ActivityManager::goToReader(std::string path) {
   replaceActivity(std::make_unique<ReaderActivity>(renderer, mappedInput, std::move(path)));
+}
+
+void ActivityManager::goToWeather() {
+  replaceActivity(std::make_unique<WeatherActivity>(renderer, mappedInput));
 }
 
 void ActivityManager::goToSleep() {
