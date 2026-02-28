@@ -1,6 +1,5 @@
 #pragma once
 
-#include <functional>
 #include <string>
 
 #include "activities/ActivityWithSubactivity.h"
@@ -23,8 +22,6 @@ class WeatherActivity final : public ActivityWithSubactivity {
   WeatherActivityState state = WeatherActivityState::CHECKING_LOCATION;
   WeatherData weatherData;
   std::string errorMessage;
-  
-  const std::function<void()> onGoHome;
   
   bool wifiConnected = false;
   bool weatherFetched = false;
@@ -53,9 +50,8 @@ class WeatherActivity final : public ActivityWithSubactivity {
   const char* getConditionText(WeatherCondition condition) const;
   
 public:
-  explicit WeatherActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
-                           const std::function<void()>& onGoHome)
-      : ActivityWithSubactivity("Weather", renderer, mappedInput), onGoHome(onGoHome) {}
+  explicit WeatherActivity(GfxRenderer& renderer, MappedInputManager& mappedInput)
+      : ActivityWithSubactivity("Weather", renderer, mappedInput) {}
   
   void onEnter() override;
   void onExit() override;
